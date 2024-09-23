@@ -339,6 +339,6 @@ terraform output pet-name (i.e. Mrs.gibbon)
 // 6. Terraform State
 
 # Don't refresh state file every time!
-# Use with all terraform "state" commands (i.e. terraform plan)
+# Use with all terraform "state" commands (i.e. terraform plan, terraform apply)
 terraform plan --refresh=false
 
