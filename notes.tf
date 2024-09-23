@@ -336,3 +336,9 @@ variable "length" {
 terraform output (.i.e. pet-name = Mrs.gibbon)
 terraform output pet-name (i.e. Mrs.gibbon)
 
+// 6. Terraform State
+
+# Don't refresh state file every time!
+# Use with all terraform "state" commands (i.e. terraform plan)
+terraform plan --refresh=false
+
