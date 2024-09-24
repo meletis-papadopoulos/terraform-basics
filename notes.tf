@@ -338,7 +338,49 @@ terraform output pet-name (i.e. Mrs.gibbon)
 
 // 6. Terraform State
 
-# Don't refresh state file every time!
-# Use with all terraform "state" commands (i.e. terraform plan, terraform apply)
+# Do not refresh the state file every time!
+# Rely on the cache attributes Terraform stores
+# The execution plan, plots a resource placement
+# Use "plan" flag, with all terraform "state" commands (i.e. terraform plan, terraform apply)
 terraform plan --refresh=false
+
+// 7. Terraform Commands
+
+# terraform show, print the current state of the infrastructure
+# Use the "-json" flag, to print the contents in JSON format
+terraform show / terraform show -json
+
+# View a list of all providers used in a configuration directory
+terraform providers
+
+# Use the "mirror" subcommand, to copy provider plugins needed for the current configuration, to another directory
+terraform providers mirror /root/terraform/new_local_file
+
+# Print all output variables in the configuration directory
+terraform output (i.e. content = "We love pets" & pet-name= "huge-owl")
+
+# Print value of a specific variable
+terraform output pet-name
+
+# Terraform refresh, is used to sync Terraform, with real world infrastructure
+# If there are any changes to a resource created by Terraform, outside its control,
+# (i.e. manual update), "terraform refresh", will pick it up and update the state file!
+# This reconciliation is useful to determine what action to take during the next apply
+# This command will not modify and infrastructure resource, but it will modify the state file
+# "terraform refresh", is automatically run by commands such as "terraform plan" & "terraform apply"
+# This is done to prior to Terraform generating an execution plan. This can be bypassed by using the
+# "-refresh=false" option, with the above commands (terraform plan & terraform apply)
+terraform refresh
+
+# Graph, is used to create a visual representation of the dependencies in a Terraform configuration or an execution plan
+# This command can be run as soon as the configuration file is ready, even before initializing the configuration directory
+# Use a graph visualization software, such as "Graphviz" (i.e. on Ubuntu)
+terraform graph
+apt update -y
+apt install -y graphviz
+
+# Pass the output of the "terraform graph", to the "dot" command
+# Open the file via a browser, to view the dependency graph
+# The root is the configuration directory, where the configuration for this graph is located
+terraform graph | dot -Tsvg > graph.svg
 
