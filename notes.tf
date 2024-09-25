@@ -454,3 +454,27 @@ resource "aws_instance" "webserver" {
   }
 }
 
+// 10. Datasources
+
+# "dog.txt", was provisioned outside Terraform
+# Data Sources export 2 attributes: "content", "content_base64"
+
+/*
+Resource                                     Data Source
+-----------------------------------------------------------------------
+Keyword: resource                            Keyword: data
+Creates, Updates, Destroys Infrastructure    Only Reads Infrastructure
+Also called Managed Resources                Also called Data Resources
+*/
+
+# main.tf
+resource "local_file" "pet" {
+  filename = "/root/pets.txt"
+  content = data.local_file.dog.content
+  # content = "We love pets!"
+}
+
+data "local_file" "dog" {
+  filname = "/root/dog.txt"
+}
+
