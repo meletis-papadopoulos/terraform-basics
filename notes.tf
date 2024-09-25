@@ -384,3 +384,73 @@ apt install -y graphviz
 # The root is the configuration directory, where the configuration for this graph is located
 terraform graph | dot -Tsvg > graph.svg
 
+// 8. Mutable vs Immutable Infrastructure
+
+# Terraform uses the immutability approach to provision resources
+# Updating (changing) a resource block (i.e. change permissions),
+# will result in the original file to be deleted and a new file
+# to be created with the updated permission. By default, Terraform
+# destroys the resource first, before creating a new one in its place!
+
+// 9. LifeCycle Rules
+
+/*
+Order   Option                  Comments
+--------------------------------------------------------------------------------------
+1       create_before_destroy   Create the resource first and then destroy
+2       prevent_destroy         Prevents a resource from being destroyed
+3       ignore_changes          Ignore changes to "Resource Attributes" (specific/all)
+*/
+
+# main.tf
+# Lifecycle rule
+# "create_before_destroy" -> Create the new resource before destroying the old
+resource "local_file" "pet" {
+  filename = "/root/pets.txt"
+  content = "We love pets!"
+  file_permission = "0700"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# main.tf
+# Lifecycle rule
+# "prevent_destroy" -> Prevent resources from being accidentaly deleted!
+# When set to "true", Terraform will reject any changes, that will result
+# in the resource getting destroyed. However, the resource can still be
+# destroyed with "terraform destroy". This rule prevents resource deletion
+# from changes made to the configuration and a subsequent apply
+resource "local_file" "pet" {
+  filename = "/root/pets.txt"
+  content = "We love pets!"
+  file_permission = "0700"
+ 
+  lifecycle {
+    prevent_destroy = true 
+  }
+}
+
+# main.tf
+# This lifecycle rule when applied will prevent a resource from being updated
+# based on a list of attributes defined in the lifecycle block
+# The "ignore-case" argument, accepts a list as indicated by the []
+# It will accept any valid resource attribute (i.e. tags)
+# If a change is made to the tags, a subsequent "terraform apply",
+# should now show, there are now changes to apply! Changes made to
+# the tags of a server outside of Terraform, are now completely ignored!
+# Since "ignore_changes" is a list it's possible to update more elements (i.e. tags, ami)
+# It's also possible to place the list with the "all" keyword, if a resource should not be
+# modified in case of a change in any of the resource attributes!
+resource "aws_instance" "webserver" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type = "t2.micro"
+  tags = {
+    Name = "ProjectA-Webserver"
+  }
+  lifecycle {
+    ignore_changes = ALL
+  }
+}
+
