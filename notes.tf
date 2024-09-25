@@ -456,7 +456,11 @@ resource "aws_instance" "webserver" {
 
 // 10. Datasources
 
-# "dog.txt", was provisioned outside Terraform
+# Datasources allow Terraform to read attributes from 
+# resources that are provisioned outside its control
+# The "dog.txt" file, was provisioned outside Terraform
+# To read attributes from a local file called "dogs.txt",
+# define a data block within the configuration file
 # Data Sources export 2 attributes: "content", "content_base64"
 
 /*
