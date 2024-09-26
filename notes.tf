@@ -482,3 +482,126 @@ data "local_file" "dog" {
   filname = "/root/dog.txt"
 }
 
+// 11. Meta Arguments
+
+# main.tf
+resource "local_file" "pet" {
+  filename = var.filename
+  content = var.content
+  depends_on = [
+    random_pet.my-pet
+  ]
+}
+
+resource "random_pet" "my-pet" {
+  prefix = var.prefix
+  separator = var.separator
+  length = var.length
+}
+
+# main.tf
+resource "local_file" "pet" {
+  filename = "/root/pets.txt"
+  content = "We love pets!"
+  file_permission = "0700"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Count (meta-argument)
+# Resources are stored as a "list", not a "map" with "count", meaning resources are identified by their index
+
+# main.tf
+resource "local_file" "pet" {
+  filename = var.filename[count.index]
+  count = length(var.filename) 
+}
+
+output "pets" {
+  value = local_file.pet
+}
+
+# variables.tf
+variable "filename" {
+  default = [
+    "/root/pets.txt" # -> pet[0]
+    "/root/dogs.txt" # -> pet[1]
+    "/root/cats.txt" # -> pet[2]
+  ]
+}
+
+# Length Function
+
+/*
+variable                                  function          value
+-----------------------------------------------------------------
+fruits=["apple, "banana", "orange"]       length(fruits)    3
+cars=["honda", "bmw", "nissan", "kia"]    length(cars)      4
+colors=["red", "purple"]                  length(colors)    2
+*/
+
+/*
+Resource          Resource Updates                        Action
+-----------------------------------------------------------------------------
+pet[0]            "/root/pets.txt" -> "/root/dogs.txt"    Destroy and Replace
+pet[1]            "/root/dogs.txt" -> "/root/cats.txt"    Destroy and Replace
+pet[2]            Does not Exist                          Destroy
+*/
+
+# for-each (meta argument)
+
+# main.tf
+resource "local_file" "pet" {
+  filename = each.value
+  for_each = var.filename
+}
+
+# variables.tf
+# A "set" cannot contain duplicate elements!
+variable "filename" {
+  type=set(string) # Change variable type to "set"
+  default = [
+    "/root/pets.txt"
+    "/root/dogs.txt"
+    "/root/cats.txt"
+  ]
+}
+
+# Variable type is "list"
+# Use built-in function called "toset", which converts variables from a "list" to a "set"
+
+# main.tf
+# Resources are stored as a "map", not a "list" with "for_each", meaning resources are identified by the keys (i.e. "/root/cats.txt", "/root/dogs.txt")
+resource "local_file" "pet" {
+  filename = each.value
+  for_each = toset(var.filename)
+}
+
+output "pets" {
+  value = local_file.pet
+}
+
+# variables.tf
+variable "filename" {
+  type=list(string)
+  default = [
+    "/root/pets.txt"
+    "/root/dogs.txt"
+    "/root/cats.txt"
+  ]
+}
+
+# variables.tf
+# Remove "/root/pets.txt" from the list
+# Now, when "terraform plan" is run, only "local_file.pet" will be destroyed!
+# The other resources will be untouched!
+variable "filename" {
+  type=list(string)
+  default = [
+    "/root/dogs.txt"
+    "/root/cats.txt"
+  ]
+}
+
