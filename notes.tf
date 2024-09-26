@@ -605,3 +605,86 @@ variable "filename" {
   ]
 }
 
+// 12. Version Constraints
+
+# main.tf
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "1.4.0"
+    }
+  }
+}
+
+resource "local_file" "pet" {
+  filename = "/root/pet.txt"
+  content = "We love pets!"
+}
+
+# main.tf
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "!= 2.0.0" # Do not download this specific version!
+    }
+  }
+}
+
+# main.tf
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "< 1.4.0" # Use a version lower than the one provided!
+    }
+  }
+}
+
+# main.tf
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "> 1.1.0" # Use a version greater than the one provided!
+    }
+  }
+}
+
+# main.tf
+# Combine comparison operators, to make use a specific version within a range
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "> 1.2.0, < 2.0.0, != 1.4.0" # Use a version greater than the one provided!
+    }
+  }
+}
+
+# Pessimistic constraint operators
+# This operator allows Terraform to download the specific version, 
+# or any available incremental version based on the provided value (i.e. 1.2, 1.3 and 1.4) -> Docs
+# Link: https://registry.terraform.io/providers/hashicorp/local/latest/docs
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "~> 1.2"
+    }
+  }
+}
+
+# This operator allows Terraform to download the specific version, 
+# or any available incremental version based on the provided value (i.e. 1.2.0, 1.2.1 and 1.2.2) -> Docs
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "~> 1.2.0"
+    }
+  }
+}
+
+// 13. 
