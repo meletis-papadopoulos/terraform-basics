@@ -449,6 +449,7 @@ resource "aws_instance" "webserver" {
   tags = {
     Name = "ProjectA-Webserver"
   }
+
   lifecycle {
     ignore_changes = ALL
   }
@@ -678,6 +679,7 @@ terraform {
 
 # This operator allows Terraform to download the specific version, 
 # or any available incremental version based on the provided value (i.e. 1.2.0, 1.2.1 and 1.2.2) -> Docs
+# One provider "local", the value for this argument is an object
 terraform {
   required_providers {
     local = {
