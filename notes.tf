@@ -689,4 +689,152 @@ terraform {
   }
 }
 
-// 13. 
+// 13. AWS IAM with Terraform
+
+# "resource" -> Block Name
+# "aws_iam_user" -> Resource Type (aws=provider, iam_user=resource)
+# "admin_user" -> Resource Name
+# "name" -> Mandatory Argument (Check TF docs)
+# "tags" -> Optional in the form of a 'key-value' map
+
+# main.tf
+
+# provider block
+provider "aws" {
+  region = "us-west-2"
+}
+
+# iam block
+resource "aws_iam_user" "admin_user" {
+  name = "lucy"
+  tags = {
+    Description = "Technical Team Leader"
+  }
+}
+
+# Pass credentials to Terraform, by configuring the AWS CLI on the client where TF is installed
+# .aws/credentials
+# Use "aws configure" command
+# [default]
+# aws_access_key_id = AKAI44QH8DHBEXAMPLE
+# aws_secret_access_key = je7MtGbClwBF/2tk/h3yCo8...
+
+# Alternatively, pass credentials in the form of environment variables
+# Set the region with command line parameter, which allows to remove the "provider" block completely!
+# export AWS_ACCESS_KEY_ID=AKAI44QH8DHBEXAMPLE
+# export AWS_SECRET_ACCESS_KEY_ID=je7MtGbClwBF/2tk/h3yCo8...
+# export AWS_REGION=us-west-2
+
+// 14. IAM Policies with Terraform
+
+# Create IAM policies and attach to users
+# All users start with the least privilege in AWS
+# To add permissions, attach IAM policies to a user
+# Permissions are assigned by the means of a policy 
+# document which is in JSON format
+
+# main.tf
+resource "aws_iam_user" "admin-user" {
+  name = "lucy"
+  tags = {
+    Description = "Technical Team Leader"
+  }
+}
+
+resource "aws_iam_policy" "adminUser" {
+  name = "AdminUsers"
+
+  # admin-policy.json
+  policy = <<EOF
+  {
+    "Version": "2012-10-17"
+    "Statement": [
+      {
+        "Effect": "Allow"
+        "Action": "*"
+        "Resource": "*"
+      }
+    ]
+  }
+  EOF
+}
+
+resource "aws_iam_user_policy_attachment" "lucy-admin-access" {
+  user = aws_iam_user.admin-user.name
+  policy_arn = aws_iam_policy.adminUser.arn
+}
+
+# Alternatively, use the following:
+
+# main.tf
+resource "aws_iam_user" "admin-user" {
+  name = "lucy"
+  tags = {
+    Description = "Technical Team Leader"
+  }
+}
+
+resource "aws_iam_policy" "adminUser" {
+  name = "AdminUsers"
+
+  # Store "admin-policy.json", in the configuration directory
+  # The "file()" function, reads a file and returns its content
+  policy = file("admin-policy.json")
+}
+
+resource "aws_iam_user_policy_attachment" "lucy-admin-access" {
+  user = aws_iam_user.admin-user.name
+  policy_arn = aws_iam_policy.adminUser.arn
+}
+
+# admin-policy.json
+{
+  "Version": "2012-10-17"
+  "Statement": [
+    {
+      "Effect": "Allow"
+      "Action": "*"
+      "Resource": "*"
+    }
+  ]
+}
+
+// 15. Introduction to AWS S3
+
+# Any object in an S3 bucket consists of "Object Data" and "Metadata"
+
+# https://<bucket_name>.<region>.amazonaws.com (DNS unique name)
+# https://all-pets.us-west-1.amazonaws.com (example)
+
+/*
+Object #  Name                  Address
+----------------------------------------------------------------------------------
+1         pets.json             https://all-pets.us-west-1.amazonaws.com/pets.json
+2         dog.jpg               https://all-pets.us-west-1.amazonaws.com/dog.jpg
+3         cat.mp4               https://all-pets.us-west-1.amazonaws.com/cat.mp4
+4         pictures/cat.jpg      https://all-pets.us-west-1.amazonaws.com/pictures/cat.jpg
+5         videos/dog.mp4        https://all-pets.us-west-1.amazonaws.com/videos/dog.mp4
+*/
+
+# Bucket Policy (example)
+# read-objects.json
+{
+  "Version": "2012-10-17"
+  "Statement": [
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::all-pets/*",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::123456123457:user/Lucy"
+        ]
+      }
+    }
+  ]
+}
+
+// 16. S3 with Terraform
+
