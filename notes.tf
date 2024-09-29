@@ -801,10 +801,21 @@ resource "aws_iam_user_policy_attachment" "lucy-admin-access" {
 
 // 15. Introduction to AWS S3
 
+# Data in AWS is stored in the form of a bucket (S3)
+# A bucket can be considered to be a container or directory which stores files
+# Everything within a bucket is an object
 # Any object in an S3 bucket consists of "Object Data" and "Metadata"
+# When a bucket is created and objects are uploaded to it, by default
+# AWS provides it the least amount of permissions, meaning no one can
+# access the objects in the bucket with the exception of the "bucket owner"
+# Access to the bucket and its objects are governed by bucket polices and ACLs
+# Bucket policies are permissions granted at a bucket level
+# Access Control Lists (ACLs), are more fine-grained access used to define permissions
+# at an object level. Just like IAM policies, bucket policies are JSON documents
+# and when attached to a bucket, they can either grant or remove access at bucket level!
 
 # https://<bucket_name>.<region>.amazonaws.com (DNS unique name)
-# https://all-pets.us-west-1.amazonaws.com (example)
+# https://all-pets.us-west-1.amazonaws.com (example of bucket called "all-pets")
 
 /*
 Object #  Name                  Address
@@ -838,3 +849,43 @@ Object #  Name                  Address
 
 // 16. S3 with Terraform
 
+# main.tf
+resource "aws_s3_bucket" "finance" {
+  bucket = "finance-21092020"
+  tags = {
+    Description = "Finance and Payroll"
+  }
+}
+
+resource "aws_s3_bucket_object" "finance-2020" {
+  content = "/root/finance/finance-2020.doc"
+  key = "finance-2020.doc"
+  bucket = aws_s3_bucket.finance.id
+}
+
+data "aws_iam_group" "finance-data" {
+  group_name = "finance-analysts"
+}
+
+resource "aws_s3_bucket_policy" "finance-policy" {
+  bucket = aws_s3_bucket.finance.id
+  policy = <<EOF
+  {
+    "Version": "2012-10-17"
+    "Statement": [
+      {
+        "Action": "*",
+        "Effect": "Allow",
+        "Resource": "arn:aws:s3:::${aws_s3_bucket.finance.id}/*",
+        "Principal": {
+          "AWS": [
+            "${data.aws_iam_group.finance-data.arn}"
+          ]
+        }
+      }
+    ]
+  }
+  EOF
+}
+
+// 17. 
