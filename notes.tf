@@ -915,4 +915,112 @@ resource "aws_dynamodb_table_item" "car-items" {
 EOF
 }
 
-// 18. 
+// 18. Remote Backends with S3
+
+# An "S3" bucket will be used to store the remote Terraform state file
+# and a DynamoDB table which will be used to implement state locking
+# Backend reinitialization required!
+# "terraform init", command will initialize the new backend!
+# If a local state file exists in the configuration directory,
+# the init process provides an option to copy the terraform state file,
+# into the remote "S3" backend. Now, it's possible to delete the local state file
+# from the configuration directory -> "rm -rf terraform.tfstate"
+
+# main.tf (infrastructure configuration)
+resource "local_file" "pet" {
+  filename = "/root/pets.txt"
+  content = "We love pets!"
+}
+
+# terraform.tf (backend configuration)
+terraform {
+  backend "s3" { # Type of the backend to use (i.e. "S3")
+    bucket = "kodekloud-terraform-state-bucket01" # Name of the existing "S3" bucket
+    key = "finance/terraform.tfstate" # "S3" object path, where the remote state file should be stored
+    region = "us-west-1" # Region where "S3" bucket has been created
+    dynamodb_table = "state-locking" # Optionally, provide a DynamoDB table (i.e. "state-locking")
+  }
+}
+
+// 19. Terraform State Commands
+
+# Syntax: terraform state <subcommand> [options] [args]
+# terraform state show aws_s3_bucket.finance
+
+/*
+Sub-command
+-----------
+list
+mv
+pull
+rm
+show
+*/
+
+# terraform state list [options] [address]
+# Will list all resources recorded within the terraform state file
+# Will only print the resource address, but no other details about the resource
+terraform state list ->
+"aws_dynamodb_table.cars"
+"aws_s3_bucket.finance-2020922"
+
+# Pass an additional argument to the "list" command for a matching resource address
+terraform state list aws_s3_bucket.finance-2020922 -> "aws_s3_bucket.finance-2020922"
+
+# terraform state show [options] [address]
+# Get detailed information about a resource from the state file
+# Will show teh attributes of a single resource in the state file
+# that matches the given address
+terraform state show aws_s3_bucket.finance-2020922
+
+# terraform state move [options] SOURCE DESTINATION
+# Used to move items in a Terraform state file
+# The items can be moved within the same state file,
+# meaning moving a resource from its current resource address to another
+# which essentially means renaming a resource
+# Or, it moves items from one state file to another state file,
+# maintained by a different configuration completely
+# Rename "state-locking" to "state-locking-db"
+# Manually, rename the resource name in the configuration file (i.e. "main.tf")
+# Change: "state-locking" -> "state-locking-db"
+terraform state mv aws_dynamodb_table.state-locking aws_dynamodb_table.state-locking-db ->
+
+# main.tf
+resource "aws_dynamodb_table" "state-locking" {
+  name = "state-locking-db"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "LockID"
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+}
+
+# terraform.tfstate
+"resources": [
+  {
+    "mode": "managed",
+    "type": "aws_dynamodb_table",
+    "name": "state-locking-db" # Changed from "state-locking"
+    "provider":
+"provider"[\"registry.terraform.io/hashicorp/aws\"
+]",
+...
+
+# terraform state pull [options] SOURCE DESTINATION
+# Download and display the remote state on screen
+# The output of this command, can be passed to JSON query tools like "jq"
+# to filter the required data
+
+# Example: Filter the hash_key used by dynamodb table called "state-locking-db" -> "LockID"
+terraform state pull | jq '.resources[] | select(.name == "state-locking-db") | .instances[].attributes.hash_key'
+
+# terraform state rm ADDRESS
+# Delete items from the Terraform state file
+# Used when you no longer wish to manage one or more resources via the current Terraform configuration and state
+# Once the resource is removed from the state file, remove the associated resource block from the configuration file as well!
+# A resource removed from a state file, is not actually destroyed from the real world infrastructure, but only removed from TF management!
+# "aws_s3_bucket.finance-2020922" -> Resource address
+terraform state rm aws_s3_bucket.finance-2020922
+
+// 20. 
