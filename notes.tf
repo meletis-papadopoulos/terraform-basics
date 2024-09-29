@@ -888,4 +888,31 @@ resource "aws_s3_bucket_policy" "finance-policy" {
   EOF
 }
 
-// 17. 
+// 17. Hands-On DevOps with Vagrant
+
+# main.tf
+resource "aws_dynamodb_table" "cars" {
+  name = "cars"
+  hash_key = "VIN" # Primary Key
+  billing_mode = "PAY_PER_REQUEST" # Controls how you are charged for read and write throughput and how you manage capacity
+  attribute { # Used to store attributes of the table (i.e. model name, type, manufacturer)
+    name = "VIN"
+    type = "S" # "S" -> String, "N" -> Number
+  }
+}
+
+# Insert items into table "cars"
+resource "aws_dynamodb_table_item" "car-items" {
+  table_name = aws_dynamo_table.cars.name
+  hash_key = aws_dynamodb_table.cars.hash_key
+  item = <<EOF
+  {
+    "Manufacturer": {"S": "Toyota"},
+    "Make": {"S": "Corolla"},
+    "Year": {"N": "2004"},
+    "VIN": {"S": "461SL65848Z411439"},
+  }
+EOF
+}
+
+// 18. 
