@@ -960,6 +960,8 @@ show
 # terraform state list [options] [address]
 # Will list all resources recorded within the terraform state file
 # Will only print the resource address, but no other details about the resource
+# "aws_dynamodb_table.cars" -> Resource address
+# "aws_s3_bucket.finance-2020922" -> Resource address
 terraform state list ->
 "aws_dynamodb_table.cars"
 "aws_s3_bucket.finance-2020922"
@@ -996,14 +998,14 @@ resource "aws_dynamodb_table" "state-locking" {
   }
 }
 
-# terraform.tfstate
+# terraform.tfstate (snippet)
 "resources": [
   {
     "mode": "managed",
     "type": "aws_dynamodb_table",
     "name": "state-locking-db" # Changed from "state-locking"
     "provider":
-"provider"[\"registry.terraform.io/hashicorp/aws\"
+"provider[\"registry.terraform.io/hashicorp/aws\"
 ]",
 ...
 
@@ -1023,4 +1025,153 @@ terraform state pull | jq '.resources[] | select(.name == "state-locking-db") | 
 # "aws_s3_bucket.finance-2020922" -> Resource address
 terraform state rm aws_s3_bucket.finance-2020922
 
-// 20. 
+// 20. AWS EC2 with Terraform
+
+# main.tf
+resource "aws_instance" "webserver" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type = "t2.micro"
+  tags = {
+    Name = "webserver"
+    Description = "An Nginx WebServer on Ubuntu"
+  }
+  # Run script when the webserver instance is launched
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt update -y
+              sudo apt-get install nginx -y
+              sudo systemctl enable nginx
+              sudo systemctl start nginx
+              EOF
+  key_name = aws_key_pair.web.id # Specify key
+}
+# Make use of an existing user supplied key pair, used to control login access to EC2 instance
+resource "aws_key_pair" "web" {
+  public_key = file("/root/.ssh/web.pub") # Read contents of an existing public key "web.pub", which is stored in the local machine
+  vpc_security_group_ids = [aws_security_group.ssh-access.id] # Apply AWS Security Group within the resource block for the EC2 instance (specify the ID of the Security Group)
+}
+
+# Create AWS Security Group, to provide SSH access
+resource "aws_security_group" "ssh-access" {
+  name = "ssh-access"
+  description = "Allow SSH access from the Internet"
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Output variable
+# Get the Public IP address of the webserver instance (use to ssh)
+output publicip {
+  value = aws_instance.webserver.public_ip
+}
+
+# provider.tf
+provider "aws" {
+  region = "us-west-1"
+}
+
+# ssh into the webserver (with private key)
+ssh -i /root/.ssh/web ubuntu@3.96.203.171
+
+// 21. Terraform Provisioners
+
+# Provisioners provide a way to carry out tasks (i.e. running commands or scripts on remote resources),
+# or, locally on the machine where Terraform is installed
+
+# Run a bash script, after a resource is created ("remote-exec" provisioner)
+# Provisioner block is placed within a resource block. For the provisioner to work,
+# there should be network connectivity between the local machine and remote instance
+
+# "remote-exec" provisioner
+# main.tf
+resource "aws_instance" "webserver" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type = "t2.micro"
+  # Provisioner
+  provisioner "remote-exec" {
+    inline = [ "sudo apt get update",
+               "sudo apt install nginx -y",
+               "sudo systemctl enable nginx",
+               "sudo systemctl start nginx"
+              ]
+  }
+  connection { # Authentication
+    type = "ssh"
+    host = self.public_ip # Public IP address for the instance (webserver). Effectively, translate into the public IP address of the provisioned instance
+    user = "ubuntu"
+    private_key = file("/root/.ssh/web")
+  }
+  key_name = aws_key_pair.web.id
+  vpc_security_group_ids = [aws_security_group.ssh-access.id]
+}
+
+resource "aws_key_pair" "web" {
+  # Code
+}
+
+resource "aws_security_group" "ssh-access" {
+  # Code
+}
+
+# "local-exec" provisioner
+# Used to run tasks on the local machine where TF is running, not on the resource created by TF
+# main.tf
+resource "aws_instance" "webserver" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type = "t2.micro"
+
+  provisioner "local-exec" {
+    command = "echo ${aws_instance.webserver.public_ip} >> /tmp/ips.txt"
+  }
+  
+  provisioner "local-exec" {
+    when = destroy # Provisioner should run before a resource is destroyed (destroy-time provisioner)
+    command = "echo Instance ${aws_instance.webserver.public_ip} Destroyed! > /tmp/instance_state.txt"
+  }
+}
+
+# Provisioner (Failure Behavior)
+
+# main.tf
+resource "aws_instance" "webserver" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type = "t2.micro"
+
+  provisioner "local-exec" {
+    on_failure = fail # Set to "fail", or "continue" to discard or create the resource respectively!  
+    command = "echo Instance ${aws_instance.webserver.public_ip} Created! > /temp/instance_state.txt"
+  }
+  
+  provisioner "local-exec" {
+    when = destroy
+    command = "echo Instance ${aws_instance.webserver.public_ip} Destroyed! > /tmp/instance_state.txt"
+  }
+}
+
+// 22. Considerations with Provisioners
+
+# main.tf
+resource "aws_instance" "webserver" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type = "t2.micro"
+  tags = {
+    Name = "webserver"
+    Description = "An NGINX WebServer on Ubuntu"
+  }
+  user_data = <<-EOF # Native argument to the EC2 resource!
+            #!/bin/bash
+            sudo apt update -y
+            sudo apt-get install nginx -y
+            sudo systemctl enable nginx
+            sudo systemctl start nginx
+            EOF
+#  provisioner "remote-exec" {
+#    inline = ["echo $(hostname -i) >> /tmp/ips.txt"]
+  }
+}
+
+// 23. 
