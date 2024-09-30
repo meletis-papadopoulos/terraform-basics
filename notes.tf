@@ -1184,4 +1184,51 @@ resource "aws_instance" "webserver" {
   }
 }
 
-// 23. 
+// 23. Terraform Taint
+
+# main.tf
+resource "aws_instance" "webserver-3" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type "t2.micro"
+  key_name = "ws"
+  provisioner "local-exec" {
+    command ="echo ${aws_instance.webserver-3.public_ip} > /temp/pub_ip.txt" # Invalid path!
+  }
+}
+
+# Taint a resource
+# When a resource creation fails for any reason, TF marks the resource as tainted
+# As a result, TF will attempt to recreate it during the subsequent "terraform apply"
+# The resource EC2 instance was successfully provisioned
+terraform taint aws_instance.webserver
+
+# Untaint a resource (undo a taint)
+# The resource won't be recreated during a subsequent Terraform apply
+terraform untaint aws_instance.webserver
+
+// 24. Debugging
+
+# Log Levels
+# Use an environment variable called "TF_LOG" and set its value to one of the log levels (i.e. TRACE)
+# Syntax: export TF_LOG=<log_level>
+export TF_LOG=TRACE
+
+/*
+Log Levels
+----------
+INFO
+WARNING
+ERROR
+DEBUG
+TRACE (verbose logging level)
+*/
+
+# Use an environment variable called "TF_LOG_PATH" to store logs persistently in a file
+# Export logs to a specific path
+export TF_LOG_PATH=/tmp/terraform.log
+
+# Disable logging
+unset TF_LOG_PATH
+
+// 25. Terraform Import
+
