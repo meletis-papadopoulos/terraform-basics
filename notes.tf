@@ -1086,6 +1086,14 @@ ssh -i /root/.ssh/web ubuntu@3.96.203.171
 # Provisioner block is placed within a resource block. For the provisioner to work,
 # there should be network connectivity between the local machine and remote instance
 
+# By default, provisioners are run after resources are created (create time provisioner)
+# It's possible to run a provisioner before a resource is destroyed (destroy time provisioner)
+# Another default behavior of provisioners is that if the command or script, within the provisioner
+# fails, the "terraform apply" operation also errors out. Any resource created while the provisioner fails,
+# is marked as "tainted" within Terraform. For "terraform apply", operation to not fail and the resource,
+# to be created successfully even if the provisioner command/script fails, set the value for "on_failure"
+# to "continue"!
+
 # "remote-exec" provisioner
 # main.tf
 resource "aws_instance" "webserver" {
@@ -1142,17 +1150,19 @@ resource "aws_instance" "webserver" {
   instance_type = "t2.micro"
 
   provisioner "local-exec" {
-    on_failure = fail # Set to "fail", or "continue" to discard or create the resource respectively!  
+    on_failure = fail # Set to "fail" (default behavior), or "continue" to discard the provisioner failure and provision the resource!  
     command = "echo Instance ${aws_instance.webserver.public_ip} Created! > /temp/instance_state.txt"
   }
   
   provisioner "local-exec" {
-    when = destroy
+    when = destroy # Run provisioner before a resource is destroyed (destroy time provisioner)
     command = "echo Instance ${aws_instance.webserver.public_ip} Destroyed! > /tmp/instance_state.txt"
   }
 }
 
 // 22. Considerations with Provisioners
+
+# Only use provisioners that are native to the resource (i.e. "user_data" for AWS EC2)
 
 # main.tf
 resource "aws_instance" "webserver" {
