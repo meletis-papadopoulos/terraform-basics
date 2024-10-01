@@ -1232,3 +1232,33 @@ unset TF_LOG_PATH
 
 // 25. Terraform Import
 
+# Write an empty Terraform resource block
+
+# Data Source
+
+#main .tf
+data "aws_instance" "webserver" {
+  instance_id = "i-026e13be10d5326f7"
+}
+
+output "newserver" {
+  value = data.aws_instance.webserver.public_ip
+}
+
+# terraform import <resource_type>.<resource_name> <attribute>
+terraform import aws_instance.webserver i-026e13be10d5326f7
+
+
+# main.tf
+resource "aws_instance" "webserver-2" {
+  # (resource arguments)
+}
+
+# main.tf (Update)
+resource "aws_instance" "webserver-2" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type = "t2.micro"
+  key_name = "ws"
+  vpc_security_group_ids = ["sg-8064fdee"]
+}
+
