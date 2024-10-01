@@ -1232,9 +1232,15 @@ unset TF_LOG_PATH
 
 // 25. Terraform Import
 
+# Resources may be provisioned outside of Terraform (i.e. Ansible, AWS Management Console)
+# To bring resources created outside of Terraform, into its control 
+
+
 # Write an empty Terraform resource block
 
-# Data Source
+
+# Data Source (Make use of the attributes of the data source)
+# This resource itself is not managed by Terraform (data source)
 
 #main .tf
 data "aws_instance" "webserver" {
@@ -1246,12 +1252,19 @@ output "newserver" {
 }
 
 # terraform import <resource_type>.<resource_name> <attribute>
+# Resource attribute can uniquely identify the resource such as the ID
+# "terraform import" does not update the configuration files at all
+# It only updates the state file with the details of the infrastructure being imported
+# The configuration for the resource being imported, has to be written manually!
+# To address this issue and continue with the import, an empty resource block should be written
+# Once the resource block is defined, re-run "terraform import, which should go through without errors!
+# The resource is now imported into the Terraform state file. Next, define all resource arguments and their values!
+# Finally, run "terraform plan" to refresh the state!
 terraform import aws_instance.webserver i-026e13be10d5326f7
-
 
 # main.tf
 resource "aws_instance" "webserver-2" {
-  # (resource arguments)
+  # (resource arguments) -> Empty resource block
 }
 
 # main.tf (Update)
@@ -1261,4 +1274,35 @@ resource "aws_instance" "webserver-2" {
   key_name = "ws"
   vpc_security_group_ids = ["sg-8064fdee"]
 }
+
+// 26. Terraform Modules
+
+# Any configuration directory containing a set of configuration files is called a "module"
+
+# Root Module
+# main.tf
+resource "aws_instance" "webserver" {
+  ami = var.ami
+  instance_type = var.instance_type
+  key_name = var.key
+}
+
+# variables.tf
+variable "ami" {
+  type = string
+  default = "ami-0edab43b6fa892279"
+  description = "Ubuntu AMI ID in the ca-central-1 region"
+}
+
+# Create a configuration file containing a module block
+# Provide the path to the "Root module" directory
+# "dev-webserver" -> Logical name of the module
+# "source" -> Path where the child module is stored
+
+# main.tf
+module "dev-webserver" {
+  source "../aws-instance"
+}
+
+// 27 .Creating and Using a Module
 
