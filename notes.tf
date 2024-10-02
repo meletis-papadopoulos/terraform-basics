@@ -1404,7 +1404,249 @@ module "security-group_ssh" {
 
 // 29. More Terraform Functions
 
+# main.tf
+resource "aws_iam_policy" "adminUser" {
+  name = "AdminUsers"
+  policy = file("admin-policy.json") # Read data from file
+}
+
+resource "local_file" "pet" {
+  filename = var.filename
+  count = length(var.region) # Determine number of elements in list/map
+}
+
+# main.tf
+resource "local_file" "pet" {
+  filename = var.filename
+  for_each = toset(var.region) # Convert a "list" into a "set"
+}
+
+variable "region" {
+  type = list
+  default = ["us-east-1",
+             "us-esat-1",
+             "ca-central-1"]
+  description = "A list of AWS Regions"
+}
+
+# Terraform interactive console
+# Test functions and interpolations
+# The interactive console loads the state associated 
+# with the configuration directory by default 
+terraform console
+
+>file("/root/terraform-projects/main.tf")
+>length(var.region) # -> 3
+>toset(var.region) # Convert list to set
+
+# Numeric Functions
+# variables.tf
+variable "num" {
+  type = set(number)
+  default = [250, 10, 11, 5]
+  description = "A set of numbers" 
+}
+
+terraform console
+
+> max(-1, 2, -10, 200, -250) # -> 200
+> min(-1, 2, -10, 200, -250) # -> -250
+
+# Expand to separate arguments, using the "expansion symbol" -> ..."
+> max(var.num...) # -> 250
+
+# Grater than or equal to current argument
+> ceil(10.1) # -> 11
+> ceil(10.9) # -> 11
+
+# Lesser than or equal to the argument provided
+> floor(10.1) # -> 10
+> floor(10.9) # -> 10
+
+# String Functions
+# variables.tf
+
+# Transform a string to a list of elements using a separator
+variable "ami" {
+  type = string
+  default = "ami-xyz,AMI-ABC,ami-efg"
+  description = "A string containing ami ids"
+}
+
+terraform console
+
+> split("," "ami-xyz,AMI-ABC,ami-efg") # -> ["ami-xyz","AMI-ABC","ami-efg"] -> List
+> split(",", var.ami) # -> ["ami-xyz","AMI-ABC","ami-efg"]
+
+> lower(var.ami) # -> ami-xyz,ami-abc,ami-efg
+> upper(var.ami) # -> AMI-XYZ,AMI-ABC,AMI-EFG
+
+# Convert the first letter of each word in a string
+> title(var.ami) # -> Ami-Xyz,AMI-ABC,Ami-Efg
+
+# Extract substring from a string with offset and length (can be "0", "8" or "16")
+# "offset": Defines the index of the character after which the string should be cut
+# "length": Defines the number of characters from the offset to cut and convert to a substring
+> substr(var.ami, 0, 7) # -> ami-xyz
+> substr(var.ami, 8, 7) # -> AMI-ABC
+> substr(var.ami, 16, 7) # -> ami-efg
+
+# Convert a list to string by adding all strings together
+> join(",", var.ami) # -> ami-xyz,AMI-ABC,ami-efg (no commas)
+
+# Collection Functions (set, list, map)
+
+terraform console
+
+length(var.ami) # -> 3
+
+# Find index of matching element (2 arguments: list and value of element)
+> index("var.ami", "AMI-ABC") # -> 1
+
+# Find element in list located at a specific index
+> element(var.ami, 2) # -> ami-efg
+
+# Check if a specific element is present in list (returns true/false)
+> contains(var.ami "AMI-ABC") # -> True
+> contains(var.ami, "AMI-XYZ") # -> False
+
+# Map Functions
+# "ami": Map variable
+variable "ami" {
+  type = map
+  default = {
+    "us-east-1" = "ami-xyz",
+    "ca-central-1" = "ami-efg",
+    "ap-south-1" = "ami-ABC"  
+  }
+  description = "A map of AMI ID's for specific regions"
+}
+
+terraform console
+
+# Convert map to list with just the keys
+# Supply map variable as argument
+> keys(var.ami) # ->
+
+/*
+[
+  "ap-south-1",
+  "ca-central-1",
+  "us-east-1"
+]
+*/
+
+# Convert map to list with just values
+> values(var.ami) # ->
+
+/*
+[
+  "ami-ABC",
+  "ami-efg",
+  "ami-xyz"
+]
+*/
+
+# Look up the value of a specific key in a map
+# Takes 2 arguments: map and the key for which to lookup the value
+> lookup(var.ami, "ca-central-1") # -> ami-efg
+
+# If the key provided to the function is not available in the map
+# an error message will be displayed
+> lookup(var.ami, "us-west-2") # -> Error
+
+# Provide a 3rd argument, which is the default value to be returned
+# if the provided key in the argument, does not exist in the map
+> lookup(var.ami, "us-west-2", "ami-pqr") # -> ami-pqr
+
 // 30. Conditional Expressions
+
+terraform console
+
+# Numeric Operators
+> 1 + 2 # -> 3
+> 5 - 3 # -> 2
+> 2 * 2 # -> 4
+> 8 / 2 # -> 4
+
+# Equality Operators
+> 8 == 8 # -> true
+> 8 == 7 # -> false
+> 8 != "8" # -> true
+
+# Comparison Operators
+> 5 > 7 # -> false
+> 5 > 4 # -> true
+> 5 > 5 # -> false
+> 5 >=5 # -> true
+> 4 < 5 # -> true
+> 3 <= 4 # -> true
+
+# Logical Operators
+> 8 > 7 && 8 < 10 # -> true
+> 8 > 10 && 8 < 10 # -> false
+> 8 > 9 || 8 < 10 # -> true
+
+> var.special # -> true
+> !var.special # -> false
+> !(var.b > 30) # -> true
+
+> var.a > var.b # -> true
+> var.a < var.b # -> false
+> var.a + var.b # -> 75
+
+# variables.tf
+variable "special" {
+  type = bool
+  default = true
+  description = "Set to true to use special characters"
+}
+
+variable "b" {
+  type = number
+  default = 25
+}
+
+variable "a" {
+  type = number
+  default = 50
+}
+
+variable "b" {
+  type = number
+  default = 25
+}
+
+# main.tf
+# Generate password with at least 8 characters
+# "var.length < 8" -> condition to check
+# "true" -> "8"
+# "false" -> var.length 
+resource "random_password" "password-generator" {
+  length = var.length < 8 ? 8 : var.length 
+}
+
+output password {
+  value = random_password.password-generator.result
+  description = "The length of the password"
+}
+
+# Apply resource
+terraform apply -var=length=5 --auto-approve
+
+# Generate password (Bash)
+if (${length} -lt 8)
+  then
+    ${length}=8;
+    echo ${length};
+  else
+    echo ${length};
+fi
+
+# Apply resource
+terraform init && terraform plan && terraform apply -var=length=5 # -> password: 8 characters
+terraform init && terraform plan && terraform apply -var=length=12 # -> password: 12 characters
 
 // 31. Terraform Workspaces (OSS)
 
+# main.tf
