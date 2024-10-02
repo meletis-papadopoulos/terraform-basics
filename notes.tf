@@ -1649,4 +1649,109 @@ terraform init && terraform plan && terraform apply -var=length=12 # -> password
 
 // 31. Terraform Workspaces (OSS)
 
-# main.tf
+# With workspaces it's possible to use the same configuration directory 
+# to create multiple infrastructure environments such as "ProjectA" and "ProjectB"
+
+/*
+Project Structure
+-------------------
+Path: /root/terraform-projects/project
+variables.tf
+main.tf
+terraform.tfstate
+
+ProjectA
+--------
+Region: ca-central-1
+AMI: ami-0edab43b6fa892279
+Instance Type: t2.micro
+
+ProjectB
+--------
+Region: ca-central-1
+AMI: ami-0c2f25c1f66a1ff4d
+Instance Type: t2.micro
+*/
+
+# main.tf (Initial phase)
+resource "aws_instance" "projectA" {
+  ami = "ami-0edab43b6fa892279"
+  instance_type = "t2.micro"
+  tags = {
+    Name = "ProjectA"
+  }
+}
+
+# Create workspace
+# Once the workspace is created, Terraform switches immediately to it
+terraform workspace new ProjectA
+
+# List workspace
+# A "*" before the workspace name, means it's the current workspace
+terraform workspace list
+
+# main.tf (Updated phase)
+resource "aws_instance" "projectA" {
+  ami = lookup(var.ami, terraform.workspace)
+  instance_type = var.instance_type
+  tags = {
+    Name = terraform.workspace # Name of current workspace
+  }
+}
+
+# variables.tf (Updated phase)
+variable "region" {
+  default = "ca-central-1"
+}
+
+variable "instance_type" {
+  default = "t2.micro"
+}
+
+variable "ami" {
+  type = map
+  default = {
+    "ProjectA" = "ami-0edab43b6fa892279"
+    "ProjectA" = "ami-0c2f25c1f66a1ff4d"
+  }
+}
+
+# Get current workspace
+terraform console
+
+> terraform.workspace # -> "ProjectA"
+
+> lookup(var.ami, terraform.workspace) # -> Get AMI argument (ami-0edab43b6fa892279)
+
+# Create aws instance in ProjectA
+terraform plan && terraform apply
+
+# Create aws instance in ProjectB
+terraform workspace new ProjectB
+
+terraform plan && terraform apply
+
+# Switch between workspaces
+terraform workspace select projectA
+
+# "terraform apply" creates 2 different state files (for each workspace)
+# When using workspaces instead of using the default "terraform.tfstate" file,
+# in the configuration directory, Terraform stores the state file in a separate
+# directory called "terraform.tfstate.d". Inside this directory, we can see another
+# directory by the name of each workspace, for which we have at least completed 1
+# "terraform apply". Within this directory there would be a "terraform.tfstate" file
+# associated with the resources created for that particular workspace
+tree terraform.tfstate.d
+
+/*
+terraform.tfstate.d # -> Directory Structure
+-------------------
+
+terraform.tfstate.d/
+|-- ProjectA
+|   `-- terraform.tfstate
+`-- ProjectB
+    `-- terraform.tfstate
+    
+2 directories, 2 files
+*/
