@@ -1297,12 +1297,114 @@ variable "ami" {
 # Create a configuration file containing a module block
 # Provide the path to the "Root module" directory
 # "dev-webserver" -> Logical name of the module
-# "source" -> Path where the child module is stored
+# "source" (required argument) -> Path where the child module is stored
 
 # main.tf
 module "dev-webserver" {
   source "../aws-instance"
 }
 
-// 27 .Creating and Using a Module
+// 27. Creating and Using a Module
+
+# Path: /root/terraform-projects/modules/payroll-app (Initially Root module, then becomes child module)
+
+# app_server.tf
+resource "aws_instance" "app_server" {
+  ami = var.ami
+  instance_type = "t2.medium" # Should be a fixed value!
+  tags = {
+    Name = "${var.app_region}-app-server"
+  }
+  depends_on = [aws_dynamodb_table.payroll_db,
+                aws_s3_bucket.payroll._data
+              ]
+}
+
+# s3_bucket.tf 
+resource "aws_s3_bucket" "payroll_data" {
+  bucket = "${var.app_region}-${var.bucket}"
+}
+
+# dynamodb_table.tf
+resource "aws_dynamodb_table" "payroll_db" {
+  name = "user_data" # Should be a fixed value!
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key = "EmployeeID" # Primary Key -> Should be a fixed value! 
+
+  attribute {
+    name = "EmployeeID"
+    type = "N"
+  }
+}
+
+# variables.tf
+variable "app_region" {
+  type = string
+}
+
+variable "bucket" {
+  default = "flexit-payroll-alpha-22001c"
+}
+
+variable "ami" {
+  type = string
+}
+
+# Path: /root/terraform-projects/us-payroll-app (Becomes new Root module)
+# main.tf
+module "us_payroll" {
+  source = "../modules/payroll-app"
+  app_region = "us-east-1" # Deploy to "us-east-1" region
+  ami = "ami-24e140119877avm" # Use custom AMI ID in that region
+}
+
+# Optionally, provide a specific value for the bucket argument
+# If no value is specified though, it'll take the default value
+# set at the module level (i.e. "flexit-payroll-alpha-22001c")
+
+# Path: /root/terraform-projects/uk-payroll-app
+# main.tf
+module "uk_payroll" {
+  source = "../modules/payroll-app"
+  app_region = "eu-west-2"
+  ami = "ami-35e140119877avm"
+}
+
+# provider.tf
+provider "aws" {
+  region = "eu-west-2"
+}
+
+// 28. Using Modules from the Registry
+
+# Local Module
+# main.tf
+module "dev-webserver" {
+  source = "../aws-instance"
+  key = "webserver"
+}
+
+# To make use of registry modules, change the value of the "source" argument, as the module is no longer local!
+
+# Create a security group that allows inbound SSH (ssh sub-module -> "security-group_ssh")
+# To run the a registry module, use "terraform init"
+# If the provider plugins have already been downloaded in the configuration directory, use "terraform get",
+# which will only download the module from the registry
+# Always specify the version of the module, as revisions are made over time
+# To create the security group in this module run: "terraform plan && terraform apply"
+# main.tf
+module "security-group_ssh" {
+  source = "terraform-aws-modules/security-group/aws/modules/ssh"
+  version = "3.16.0"
+  # Insert 2 required variables here...
+  vpc_id = "vpc-7d8d215"
+  ingress_cidr_blocks = ["10.10.0.0/16"] # List of IP address range, from which SSH is allowed
+  name = "ssh-access"
+}
+
+// 29. More Terraform Functions
+
+// 30. Conditional Expressions
+
+// 31. Terraform Workspaces (OSS)
 
