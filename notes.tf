@@ -1635,6 +1635,7 @@ output password {
 terraform apply -var=length=5 --auto-approve
 
 # Generate password (Bash)
+/*
 if (${length} -lt 8)
   then
     ${length}=8;
@@ -1642,6 +1643,7 @@ if (${length} -lt 8)
   else
     echo ${length};
 fi
+*/
 
 # Apply resource
 terraform init && terraform plan && terraform apply -var=length=5 # -> password: 8 characters
